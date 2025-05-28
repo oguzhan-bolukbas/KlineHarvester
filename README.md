@@ -41,7 +41,7 @@ binance-kline-collector/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/binance-kline-collector.git
+git clone https://github.com/oguzhan-bolukbas/binance-kline-collector.git
 cd binance-kline-collector
 ```
 
