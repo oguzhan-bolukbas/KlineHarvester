@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:2.20.1-pg17@sha256:7f16769c57e3d9ee1b8af9fd03140c86577bccc0291636b94397f8f1e4cd9b27
+    container_name: timescaledb
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ../db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  timescale_data:
