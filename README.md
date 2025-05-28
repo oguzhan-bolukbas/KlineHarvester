@@ -31,7 +31,7 @@ binance-kline-collector/
 ├── docker/
 │ ├── Dockerfile # Python service
 │ └── docker-compose.yml # Services orchestration
-├── .env # Environment variables
+│ └── .env # Environment variables
 ├── requirements.txt # Python dependencies
 └── README.md
 ```
