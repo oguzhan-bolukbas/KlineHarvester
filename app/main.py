@@ -54,8 +54,9 @@ def main():
             klines = fetch_all_klines(symbol, interval)
             print(f"Fetched {len(klines)} klines. Inserting into DB...")
             insert_klines(session, symbol, interval, klines)
-            print(f"Done: {symbol} {interval}")
+            print(f"Done: {symbol} {interval}")    
     session.close()
+    print(f"\n\n***** SESSION CLOSED! *****\n")
 
 if __name__ == "__main__":
     main()

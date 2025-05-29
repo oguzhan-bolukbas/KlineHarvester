@@ -28,7 +28,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: kline-app
-    restart: unless-stopped
+    restart: no
     env_file:
       - .env
     depends_on:
