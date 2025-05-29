@@ -14,7 +14,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - timescale_data:/var/lib/postgresql/data
+      - binance_kline_collector:/var/lib/postgresql/data
       - ../db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
@@ -22,5 +22,19 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: kline-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - timescaledb
+    volumes:
+      - ../app:/app
+    working_dir: /app
+
 volumes:
-  timescale_data:
+  binance_kline_collector:
