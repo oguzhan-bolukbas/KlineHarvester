@@ -59,7 +59,7 @@ def main():
     Base.metadata.create_all(bind=engine)
     symbols = read_symbols("symbols.json")
     intervals = read_intervals("intervals.json")
-    max_workers = 32  # Start with 32 threads, decrease if errors occur
+    max_workers = 16  # Start with 16 threads, decrease if errors occur
     print(f"Using max_workers={max_workers}")
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
