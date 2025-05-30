@@ -8,6 +8,7 @@ from crud import insert_klines
 import time
 import json
 import concurrent.futures
+import logging
 
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
@@ -18,6 +19,8 @@ DB_NAME = os.getenv("DB_NAME", "klines")
 DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
 # Read symbols and intervals from file
 def read_symbols(filepath):
@@ -47,11 +50,11 @@ def fetch_all_klines(symbol, interval):
 def fetch_and_insert(symbol, interval):
     session = SessionLocal()
     try:
-        print(f"Fetching {symbol} {interval}...")
+        logging.info(f"Fetching {symbol} {interval}...")
         klines = fetch_all_klines(symbol, interval)
-        print(f"Fetched {len(klines)} klines. Inserting into DB...")
+        logging.info(f"Fetched {len(klines)} klines. Inserting into DB...")
         insert_klines(session, symbol, interval, klines)
-        print(f"Done: {symbol} {interval}")
+        logging.info(f"Done: {symbol} {interval}")
     finally:
         session.close()
 
@@ -60,7 +63,7 @@ def main():
     symbols = read_symbols("symbols.json")
     intervals = read_intervals("intervals.json")
     max_workers = 16  # Start with 16 threads, decrease if errors occur
-    print(f"Using max_workers={max_workers}")
+    logging.info(f"Using max_workers={max_workers}")
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for symbol in symbols:
@@ -70,8 +73,8 @@ def main():
             try:
                 future.result()
             except Exception as exc:
-                print(f"Thread generated an exception: {exc}")
-    print(f"\n\n***** ALL THREADS COMPLETED! *****\n")
+                logging.error(f"Thread generated an exception: {exc}")
+    logging.info(f"\n\n***** ALL THREADS COMPLETED! *****\n")
 
 if __name__ == "__main__":
     main()
