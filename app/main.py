@@ -7,6 +7,7 @@ from models import Base
 from crud import insert_klines
 import time
 import json
+import concurrent.futures
 
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
@@ -43,20 +44,34 @@ def fetch_all_klines(symbol, interval):
         time.sleep(0.5)  # avoid rate limits
     return all_klines
 
+def fetch_and_insert(symbol, interval):
+    session = SessionLocal()
+    try:
+        print(f"Fetching {symbol} {interval}...")
+        klines = fetch_all_klines(symbol, interval)
+        print(f"Fetched {len(klines)} klines. Inserting into DB...")
+        insert_klines(session, symbol, interval, klines)
+        print(f"Done: {symbol} {interval}")
+    finally:
+        session.close()
+
 def main():
     Base.metadata.create_all(bind=engine)
-    session = SessionLocal()
     symbols = read_symbols("symbols.json")
     intervals = read_intervals("intervals.json")
-    for symbol in symbols:
-        for interval in intervals:
-            print(f"Fetching {symbol} {interval}...")
-            klines = fetch_all_klines(symbol, interval)
-            print(f"Fetched {len(klines)} klines. Inserting into DB...")
-            insert_klines(session, symbol, interval, klines)
-            print(f"Done: {symbol} {interval}")    
-    session.close()
-    print(f"\n\n***** SESSION CLOSED! *****\n")
+    max_workers = 32  # Start with 32 threads, decrease if errors occur
+    print(f"Using max_workers={max_workers}")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+        for symbol in symbols:
+            for interval in intervals:
+                futures.append(executor.submit(fetch_and_insert, symbol, interval))
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                future.result()
+            except Exception as exc:
+                print(f"Thread generated an exception: {exc}")
+    print(f"\n\n***** ALL THREADS COMPLETED! *****\n")
 
 if __name__ == "__main__":
     main()
