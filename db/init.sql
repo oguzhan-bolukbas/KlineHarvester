@@ -1,5 +1,4 @@
 CREATE TABLE IF NOT EXISTS klines (
-    id SERIAL PRIMARY KEY,
     symbol TEXT NOT NULL,
     interval TEXT NOT NULL,
     open_time TIMESTAMPTZ NOT NULL,
@@ -13,7 +12,7 @@ CREATE TABLE IF NOT EXISTS klines (
     number_of_trades INTEGER,
     taker_buy_base_asset_volume NUMERIC,
     taker_buy_quote_asset_volume NUMERIC,
-    UNIQUE(symbol, interval, open_time)  -- to avoid duplicate inserts
+    PRIMARY KEY(symbol, interval, open_time)
 );
 
 -- TimescaleDB feature: create hypertable
