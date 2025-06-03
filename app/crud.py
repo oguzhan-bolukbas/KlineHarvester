@@ -4,7 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from models import Kline
 from datetime import datetime, timezone
 
-def insert_klines(session: Session, symbol: str, interval: str, klines: list):
+def insert_klines(session: Session, symbol: str, interval: str, klines: list, batch_size: int = 5000):
     rows = []
     for k in klines:
         rows.append({
@@ -22,12 +22,15 @@ def insert_klines(session: Session, symbol: str, interval: str, klines: list):
             'taker_buy_base_asset_volume': k[9],
             'taker_buy_quote_asset_volume': k[10],
         })
-    if rows:
-        stmt = pg_insert(Kline.__table__).values(rows)
-        stmt = stmt.on_conflict_do_nothing(index_elements=['symbol', 'interval', 'open_time'])
-        try:
+    if not rows:
+        return
+    try:
+        for i in range(0, len(rows), batch_size):
+            batch = rows[i:i+batch_size]
+            stmt = pg_insert(Kline.__table__).values(batch)
+            stmt = stmt.on_conflict_do_nothing(index_elements=['symbol', 'interval', 'open_time'])
             session.execute(stmt)
             session.commit()
-        except SQLAlchemyError as e:
-            session.rollback()
-            print(f"DB insert error: {e}")
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"DB insert error: {e}")

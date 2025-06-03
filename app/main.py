@@ -1,7 +1,7 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime, timedelta
+from datetime import datetime, date
 from fetcher import get_klines
 from models import Base
 from crud import insert_klines
@@ -22,14 +22,17 @@ SessionLocal = sessionmaker(bind=engine)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
+
 # Read symbols and intervals from file
 def read_symbols(filepath):
     with open(filepath, "r") as f:
         return json.load(f)
 
+
 def read_intervals(filepath):
     with open(filepath, "r") as f:
         return json.load(f)
+
 
 def fetch_all_klines(symbol, interval):
     # Binance max 1000 per request, fetch backwards
@@ -44,19 +47,45 @@ def fetch_all_klines(symbol, interval):
         if len(klines) < 1000:
             break
         end_time = first_open_time - 1
-        time.sleep(0.5)  # avoid rate limits
     return all_klines
+
+
+def fetch_klines_in_range(symbol, interval, start_date, end_date):
+    """
+    Fetch klines for a symbol and interval between two datetime.date or datetime.datetime objects (inclusive).
+    Dates should be in UTC.
+    """
+    start_time = int(datetime.combine(start_date, datetime.min.time()).timestamp() * 1000)
+    end_time = int(datetime.combine(end_date, datetime.max.time()).timestamp() * 1000)
+    all_klines = []
+    while True:
+        klines = get_klines(symbol, interval, start_time=start_time, end_time=end_time, limit=1000)
+        if not klines:
+            break
+        all_klines += klines
+        last_close_time = klines[-1][6]
+        # If less than 1000 or last kline's close_time >= end_time, stop
+        if len(klines) < 1000 or last_close_time >= end_time:
+            break
+        # Move start_time forward to avoid overlap
+        start_time = last_close_time + 1
+    return all_klines
+
 
 def fetch_and_insert(symbol, interval):
     session = SessionLocal()
     try:
         logging.info(f"Fetching {symbol} {interval}...")
-        klines = fetch_all_klines(symbol, interval)
-        logging.info(f"Fetched {len(klines)} klines. Inserting into DB...")
+        # klines = fetch_all_klines(symbol, interval)
+        start_date = date(2024, 1, 1)
+        end_date = date(2025, 5, 31)
+        klines = fetch_klines_in_range(symbol, interval, start_date, end_date)
+        logging.info(f"Fetched {len(klines)} klines for {symbol} in {interval}. Inserting into DB...")
         insert_klines(session, symbol, interval, klines)
         logging.info(f"Done: {symbol} {interval}")
     finally:
         session.close()
+
 
 def main():
     Base.metadata.create_all(bind=engine)
@@ -69,6 +98,7 @@ def main():
         for symbol in symbols:
             for interval in intervals:
                 futures.append(executor.submit(fetch_and_insert, symbol, interval))
+            time.sleep(120)
         for future in concurrent.futures.as_completed(futures):
             try:
                 future.result()
